@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>정명인을 위한 오토 스터디 플래너</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React 및 ReactDOM, Babel (안정성이 검증된 버전) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin></script>
+
+  <style>
+    /* 스크롤바 디자인 및 모바일 터치 최적화 */
+    input[type="range"]::-webkit-slider-thumb {
+      background: #f472b6;
+    }
+  </style>
+</head>
+<body class="bg-[#fff0f5]">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // 모바일/사파리 환경에서 에러를 유발하는 외부 아이콘 라이브러리 대신 
+    // 안정성이 100% 보장된 내장 SVG 아이콘 컴포넌트를 사용합니다.
+    const SVGIcon = ({ name, className = "w-5 h-5" }) => {
+      const icons = {
+        trophy: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 9V2h12v7m-12 0a4 4 0 00-4 4v2a4 4 0 004 4h12a4 4 0 004-4v-2a4 4 0 00-4-4M6 9h12M9 22h6M12 17v5" />
+          </svg>
+        ),
+        calendar: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        ),
+        clock: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+        book: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        ),
+        plus: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+          </svg>
+        ),
+        trash: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        ),
+        right: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        ),
+        left: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        ),
+        rotate: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 15.89M9.555 7.162l-.74 1.157m1.157-1.157l1.157.74M8.815 8.319H4" />
+          </svg>
+        ),
+        alert: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        ),
+        check: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        ),
+        save: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+          </svg>
+        ),
+        upload: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+          </svg>
+        ),
+        copy: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+        ),
+        download: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+        ),
+        x: (
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        )
+      };
+      return icons[name] || null;
+    };
+
+    function App() {
+      const [step, setStep] = useState(1);
+      const [examStartDate, setExamStartDate] = useState('');
+      const [examEndDate, setExamEndDate] = useState('');
+      const [studyHours, setStudyHours] = useState(4);
+      const [subjects, setSubjects] = useState([
+        { id: 1, name: '국어', priority: '상', progress: 30, targetGrade: 1 },
+        { id: 2, name: '수학', priority: '상', progress: 10, targetGrade: 2 },
+        { id: 3, name: '영어', priority: '중', progress: 50, targetGrade: 3 },
+      ]);
+      const [error, setError] = useState('');
+      const [planResult, setPlanResult] = useState(null);
+      const [selectedDate, setSelectedDate] = useState(new Date());
+      const [currentMonth, setCurrentMonth] = useState(new Date());
+      const [toastMessage, setToastMessage] = useState('');
+      const [importCode, setImportCode] = useState('');
+      const [showImportModal, setShowImportModal] = useState(false);
+
+      const encodeUTF8 = (str) => {
+        return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => {
+          return String.fromCharCode(parseInt(p1, 16));
+        }));
+      };
+
+      const decodeUTF8 = (str) => {
+        return decodeURIComponent(Array.prototype.map.call(atob(str), (c) => {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+      };
+
+      const compressData = (data) => {
+        const compact = {
+          sd: data.examStartDate,
+          ed: data.examEndDate,
+          sh: data.studyHours,
+          s: data.subjects.map(sub => ({
+            n: sub.name,
+            p: sub.priority,
+            g: sub.progress,
+            t: sub.targetGrade
+          }))
+        };
+        return encodeUTF8(JSON.stringify(compact));
+      };
+
+      const decompressData = (code) => {
+        const compact = JSON.parse(decodeUTF8(code));
+        return {
+          examStartDate: compact.sd,
+          examEndDate: compact.ed,
+          studyHours: Number(compact.sh),
+          subjects: compact.s.map((sub, idx) => ({
+            id: Date.now() + idx,
+            name: sub.n,
+            priority: sub.p,
+            progress: Number(sub.g),
+            targetGrade: Number(sub.t)
+          }))
+        };
+      };
+
+      const showToast = (message) => {
+        setToastMessage(message);
+        setTimeout(() => setToastMessage(''), 4500);
+      };
+
+      const parseLocalDate = (dateStr) => {
+        if (!dateStr) return null;
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return null;
+        const [year, month, day] = parts.map(Number);
+        return new Date(year, month - 1, day, 0, 0, 0, 0);
+      };
+
+      useEffect(() => {
+        try {
+          const savedData = localStorage.getItem('jmy_study_planner_data');
+          if (savedData) {
+            const decodedData = JSON.parse(savedData);
+            if (decodedData) {
+              if (decodedData.examStartDate) setExamStartDate(decodedData.examStartDate);
+              if (decodedData.examEndDate) setExamEndDate(decodedData.examEndDate);
+              if (decodedData.studyHours) setStudyHours(Number(decodedData.studyHours));
+              if (decodedData.subjects) setSubjects(decodedData.subjects);
+              
+              setTimeout(() => {
+                triggerPlanGeneration(decodedData);
+              }, 150);
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }, []);
+
+      const triggerPlanGeneration = (data) => {
+        const startDate = parseLocalDate(data.examStartDate);
+        const endDate = parseLocalDate(data.examEndDate);
+        if (!startDate || !endDate) return;
+
+        const actualExamDates = [];
+        let currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const dayOfWeek = currentDate.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            actualExamDates.push(new Date(currentDate));
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const lastExamDate = actualExamDates[actualExamDates.length - 1];
+        const upcomingExams = actualExamDates.filter(d => d >= today);
+        const nextExamDate = upcomingExams.length > 0 ? upcomingExams[0] : lastExamDate;
+        
+        const diffTime = nextExamDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const totalStudyDays = Math.max(1, Math.ceil((lastExamDate - today) / (1000 * 60 * 60 * 24)));
+
+        const priorityWeight = { '상': 3, '중': 2, '하': 1 };
+        let totalNeedFactor = 0;
+        
+        const calculatedSubjects = data.subjects.map(sub => {
+          const remainingProgress = 100 - sub.progress;
+          const gradeWeight = 10 - (sub.targetGrade || 3);
+          const needFactor = remainingProgress > 0 
+            ? remainingProgress * (priorityWeight[sub.priority] || 2) * gradeWeight
+            : 0;
+          totalNeedFactor += needFactor;
+          return { ...sub, needFactor };
+        });
+
+        const totalAvailableHours = totalStudyDays * data.studyHours;
+
+        const finalPlan = calculatedSubjects.map(sub => {
+          const allocationRatio = totalNeedFactor > 0 ? (sub.needFactor / totalNeedFactor) : 0;
+          const totalAllocatedHours = allocationRatio * totalAvailableHours;
+          return {
+            ...sub,
+            totalHours: Math.round(totalAllocatedHours * 10) / 10,
+          };
+        });
+
+        finalPlan.sort((a, b) => b.totalHours - a.totalHours);
+
+        setPlanResult({
+          dDay: diffDays,
+          totalHours: totalAvailableHours,
+          subjects: finalPlan,
+          actualExamDates: actualExamDates
+        });
+        
+        setSelectedDate(new Date());
+        setCurrentMonth(new Date());
+        setStep(2);
+      };
+
+      const generatePlan = () => {
+        setError('');
+        if (!examStartDate || !examEndDate) {
+          setError('시험 시작일과 종료일을 모두 선택해주세요.');
+          return;
+        }
+        
+        const startDate = parseLocalDate(examStartDate);
+        const endDate = parseLocalDate(examEndDate);
+
+        if (!startDate || !endDate) {
+          setError('날짜 형식이 올바르지 않습니다.');
+          return;
+        }
+
+        if (startDate > endDate) {
+          setError('시험 종료일은 시작일보다 이후여야 합니다.');
+          return;
+        }
+
+        const actualExamDates = [];
+        let currentDate = new Date(startDate);
+        while (currentDate <= endDate) {
+          const dayOfWeek = currentDate.getDay();
+          if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            actualExamDates.push(new Date(currentDate));
+          }
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        if (actualExamDates.length === 0) {
+          setError('선택한 기간에 평일(실제 시험일)이 없습니다.');
+          return;
+        }
+        
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const lastExamDate = actualExamDates[actualExamDates.length - 1];
+        const upcomingExams = actualExamDates.filter(d => d >= today);
+        if (upcomingExams.length === 0) {
+          setError('모든 시험일이 과거입니다. 오늘 이후의 날짜를 선택해주세요.');
+          return;
+        }
+        const nextExamDate = upcomingExams[0];
+        
+        const diffTime = nextExamDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        const totalStudyDays = Math.max(1, Math.ceil((lastExamDate - today) / (1000 * 60 * 60 * 24)));
+
+        if (subjects.length === 0 || subjects.some(s => !s.name.trim())) {
+          setError('모든 과목의 이름을 입력해주세요.');
+          return;
+        }
+
+        const priorityWeight = { '상': 3, '중': 2, '하': 1 };
+        let totalNeedFactor = 0;
+        
+        const calculatedSubjects = subjects.map(sub => {
+          const remainingProgress = 100 - sub.progress;
+          const gradeWeight = 10 - (sub.targetGrade || 3);
+          const needFactor = remainingProgress > 0 
+            ? remainingProgress * (priorityWeight[sub.priority] || 2) * gradeWeight
+            : 0;
+          totalNeedFactor += needFactor;
+          return { ...sub, needFactor };
+        });
+
+        const totalAvailableHours = totalStudyDays * studyHours;
+
+        const finalPlan = calculatedSubjects.map(sub => {
+          const allocationRatio = totalNeedFactor > 0 ? (sub.needFactor / totalNeedFactor) : 0;
+          const totalAllocatedHours = allocationRatio * totalAvailableHours;
+          return {
+            ...sub,
+            totalHours: Math.round(totalAllocatedHours * 10) / 10,
+          };
+        });
+
+        finalPlan.sort((a, b) => b.totalHours - a.totalHours);
+
+        const planData = { examStartDate, examEndDate, studyHours, subjects };
+
+        try {
+          localStorage.setItem('jmy_study_planner_data', JSON.stringify(planData));
+        } catch (e) {
+          console.error(e);
+        }
+
+        setPlanResult({
+          dDay: diffDays,
+          totalHours: totalAvailableHours,
+          subjects: finalPlan,
+          actualExamDates: actualExamDates
+        });
+        
+        setSelectedDate(new Date());
+        setCurrentMonth(new Date());
+        setStep(2);
+      };
+
+      const copyStudyPlanText = () => {
+        try {
+          let text = `🌸 정명인을 위한 오토 스터디 플래너 결과 🌸\n`;
+          text += `📅 시험 기간: ${examStartDate} ~ ${examEndDate}\n`;
+          text += `⏱ 하루 목표 공부량: ${studyHours}시간\n`;
+          text += `✨ 다음 시험 남은 기한: D-${planResult.dDay === 0 ? 'Day' : planResult.dDay}\n\n`;
+          text += `📚 [과목별 전체 마스터 플랜]\n`;
+          planResult.subjects.forEach(sub => {
+            text += `- ${sub.name} (${sub.targetGrade}등급 목표, ${sub.priority}): 총 ${sub.totalHours}시간 공부 필요\n`;
+          });
+          
+          const tempInput = document.createElement('textarea');
+          tempInput.value = text;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+
+          showToast('📋 스케줄 텍스트 복사 완료! 메모장이나 카톡에 바로 붙여넣어 보세요.');
+        } catch (e) {
+          setError('복사 실패');
+        }
+      };
+
+      const copyStudyCode = () => {
+        try {
+          const rawData = { examStartDate, examEndDate, studyHours, subjects };
+          const compactCode = compressData(rawData);
+          
+          const tempInput = document.createElement('input');
+          tempInput.value = compactCode;
+          document.body.appendChild(tempInput);
+          tempInput.select();
+          document.execCommand('copy');
+          document.body.removeChild(tempInput);
+
+          showToast('🔑 초단축 스터디 백업 코드가 복사되었습니다!');
+        } catch (e) {
+          setError('코드 복사 실패');
+        }
+      };
+
+      const handleImportCode = () => {
+        try {
+          if (!importCode.trim()) return;
+          const decrypted = decompressData(importCode.trim());
+          if (decrypted) {
+            setExamStartDate(decrypted.examStartDate || '');
+            setExamEndDate(decrypted.examEndDate || '');
+            setStudyHours(Number(decrypted.studyHours || 4));
+            setSubjects(decrypted.subjects || []);
+            
+            localStorage.setItem('jmy_study_planner_data', JSON.stringify(decrypted));
+            triggerPlanGeneration(decrypted);
+            setShowImportModal(false);
+            setImportCode('');
+            showToast('🎉 스터디 데이터를 완벽히 가져왔습니다!');
+          }
+        } catch (e) {
+          setError('유효하지 않은 코드입니다.');
+        }
+      };
+
+      const getDynamicDailyRoutine = (dateObj) => {
+        if (!planResult || !planResult.subjects) return [];
+        const seed = Math.floor(dateObj.getTime() / (1000 * 3600 * 24));
+        const totalDailyMins = studyHours * 60;
+        
+        let weights = planResult.subjects.map((sub, idx) => {
+          const modifier = 1 + 0.4 * Math.sin(seed + idx * 2.5); 
+          return sub.needFactor > 0 ? sub.needFactor * modifier : 0;
+        });
+        
+        const totalWeight = weights.reduce((a, b) => a + b, 0);
+        let remainingMins = totalDailyMins;
+        
+        return planResult.subjects.map((sub, idx) => {
+          if (totalWeight === 0) {
+            let fallbackMins = Math.round((totalDailyMins / planResult.subjects.length) / 10) * 10;
+            if (idx === planResult.subjects.length - 1) fallbackMins = remainingMins;
+            remainingMins -= fallbackMins;
+            return { ...sub, dailyMinutes: Math.max(0, fallbackMins) };
+          }
+          let mins = 0;
+          if (idx === planResult.subjects.length - 1) {
+            mins = remainingMins;
+          } else {
+            mins = Math.round(((weights[idx] / totalWeight) * totalDailyMins) / 10) * 10;
+            if (mins > remainingMins) mins = remainingMins;
+          }
+          remainingMins -= mins;
+          return { ...sub, dailyMinutes: Math.max(0, mins) };
+        });
+      };
+
+      const getDaysToExam = (date) => {
+        if (!planResult || !planResult.actualExamDates || planResult.actualExamDates.length === 0) return null;
+        const firstExam = new Date(planResult.actualExamDates[0]);
+        firstExam.setHours(0, 0, 0, 0);
+        const target = new Date(date);
+        target.setHours(0, 0, 0, 0);
+        const diffTime = firstExam - target;
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      };
+
+      const isSameDate = (date1, date2) => {
+        return date1.getFullYear() === date2.getFullYear() &&
+               date1.getMonth() === date2.getMonth() &&
+               date1.getDate() === date2.getDate();
+      };
+
+      const isStudyDay = (dateToCheck) => {
+        if (!planResult || !planResult.actualExamDates) return false;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const lastDate = planResult.actualExamDates[planResult.actualExamDates.length - 1];
+        const check = new Date(dateToCheck);
+        check.setHours(0,0,0,0);
+        return check >= today && check <= lastDate && !isExamDay(dateToCheck);
+      };
+
+      const isExamDay = (dateToCheck) => {
+        if (!planResult || !planResult.actualExamDates) return false;
+        const check = new Date(dateToCheck);
+        check.setHours(0,0,0,0);
+        return planResult.actualExamDates.some(d => d.getTime() === check.getTime());
+      };
+
+      const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();
+      const getFirstDayOfMonth = (year, month) => new Date(year, month, 1).getDay();
+
+      let canGoPrev = true;
+      let canGoNext = true;
+      if (planResult && planResult.actualExamDates && planResult.actualExamDates.length > 0) {
+        const today = new Date();
+        const minMonthStart = new Date(today.getFullYear(), today.getMonth(), 1).getTime();
+        const lastExam = planResult.actualExamDates[planResult.actualExamDates.length - 1];
+        const maxMonthStart = new Date(lastExam.getFullYear(), lastExam.getMonth(), 1).getTime();
+        const currentMonthStart = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).getTime();
+        canGoPrev = currentMonthStart > minMonthStart;
+        canGoNext = currentMonthStart < maxMonthStart;
+      }
+
+      const prevMonth = () => {
+        if (canGoPrev) {
+          setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+        }
+      };
+      
+      const nextMonth = () => {
+        if (canGoNext) {
+          setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-[#fff0f5] pt-10 pb-48 px-4 font-sans text-slate-800 relative">
+          <div className="max-w-4xl mx-auto space-y-6">
+            
+            {/* Header */}
+            <div className="text-center space-y-2 mb-10 relative">
+              <div className="inline-flex items-center justify-center p-3 bg-pink-100 rounded-full mb-4">
+                <SVGIcon name="trophy" className="w-8 h-8 text-pink-500" />
+              </div>
+              <h1 className="text-3xl font-bold tracking-tight text-slate-900">정명인을 위한 오토 스터디 플래너</h1>
+              {step === 1 && (
+                <p className="text-slate-500">지정하신 주말과 시간에 맞춘 자동 플래너 시스템</p>
+              )}
+              {step === 1 && (
+                <button 
+                  onClick={() => setShowImportModal(true)}
+                  className="absolute right-0 top-0 text-sm font-semibold text-pink-600 bg-white border border-pink-100 px-3 py-2 rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  <SVGIcon name="upload" className="w-4 h-4" /> 코드 불러오기
+                </button>
+              )}
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-500 p-4 rounded-xl flex items-center gap-3 border border-red-100">
+                <SVGIcon name="alert" className="w-5 h-5 flex-shrink-0" />
+                <p className="text-sm font-medium">{error}</p>
+              </div>
+            )}
+
+            {/* STEP 1: Input */}
+            {step === 1 && (
+              <div className="space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
+                  <div className="p-6 border-b border-pink-50 bg-pink-50/50">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <SVGIcon name="calendar" className="w-5 h-5 text-pink-400" /> 기본 일정 설정
+                    </h2>
+                  </div>
+                  <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="text-sm font-medium text-slate-700 block">시험 기간 (첫날 ~ 마지막날)</label>
+                      <div className="flex items-center gap-2">
+                        <input type="date" value={examStartDate} onChange={(e) => setExamStartDate(e.target.value)} className="w-full p-3 rounded-xl border border-pink-200 outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100" />
+                        <span className="text-slate-400 font-bold">~</span>
+                        <input type="date" value={examEndDate} onChange={(e) => setExamEndDate(e.target.value)} className="w-full p-3 rounded-xl border border-pink-200 outline-none focus:border-pink-400 focus:ring-2 focus:ring-pink-100" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-slate-700 block">하루 평균 공부 목표 (시간)</label>
+                      <div className="relative">
+                        <select value={studyHours} onChange={(e) => setStudyHours(Number(e.target.value))} className="w-full p-3 rounded-xl border border-pink-200 outline-none bg-white appearance-none pl-10">
+                          {Array.from({ length: 20 }, (_, i) => i + 1).map(h => <option key={h} value={h}>{h}시간</option>)}
+                        </select>
+                        <SVGIcon name="clock" className="w-5 h-5 text-pink-300 absolute left-3 top-3.5 pointer-events-none" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
+                  <div className="p-6 border-b border-pink-50 bg-pink-50/50 flex justify-between items-center">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <SVGIcon name="book" className="w-5 h-5 text-pink-400" /> 시험 과목 및 현재 상태
+                    </h2>
+                    <button onClick={() => setSubjects([...subjects, { id: Date.now(), name: '', priority: '중', progress: 0, targetGrade: 3 }])} className="flex items-center gap-1 text-sm font-medium text-pink-500 bg-pink-50 px-3 py-1.5 rounded-lg hover:bg-pink-100">
+                      <SVGIcon name="plus" className="w-4 h-4" /> 과목 추가
+                    </button>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    {subjects.map((subject, idx) => (
+                      <div key={subject.id} className="flex flex-col sm:flex-row gap-4 p-4 rounded-xl border border-pink-50 bg-pink-50/30 relative">
+                        <div className="flex-1 space-y-1">
+                          <label className="text-xs font-semibold text-slate-500">과목명</label>
+                          <input type="text" placeholder="예: 수학" value={subject.name} onChange={(e) => setSubjects(subjects.map(s => s.id === subject.id ? { ...s, name: e.target.value } : s))} className="w-full p-2.5 bg-white rounded-lg border border-pink-200 outline-none" />
+                        </div>
+                        <div className="w-full sm:w-24 space-y-1">
+                          <label className="text-xs font-semibold text-slate-500">목표 등급</label>
+                          <select value={subject.targetGrade} onChange={(e) => setSubjects(subjects.map(s => s.id === subject.id ? { ...s, targetGrade: Number(e.target.value) } : s))} className="w-full p-2.5 bg-white rounded-lg border border-pink-200 outline-none">
+                            {[1,2,3,4,5,6,7,8,9].map(g => <option key={g} value={g}>{g}등급</option>)}
+                          </select>
+                        </div>
+                        <div className="w-full sm:w-24 space-y-1">
+                          <label className="text-xs font-semibold text-slate-500">중요도</label>
+                          <select value={subject.priority} onChange={(e) => setSubjects(subjects.map(s => s.id === subject.id ? { ...s, priority: e.target.value } : s))} className="w-full p-2.5 bg-white rounded-lg border border-pink-200 outline-none">
+                            <option value="상">상 (높음)</option>
+                            <option value="중">중 (보통)</option>
+                            <option value="하">하 (낮음)</option>
+                          </select>
+                        </div>
+                        <div className="w-full sm:w-1/3 space-y-1">
+                          <div className="flex justify-between items-center">
+                            <label className="text-xs font-semibold text-slate-500">현재 진척도</label>
+                            <span className="text-xs font-bold text-pink-500">{subject.progress}%</span>
+                          </div>
+                          <input type="range" min="0" max="100" step="5" value={subject.progress} onChange={(e) => setSubjects(subjects.map(s => s.id === subject.id ? { ...s, progress: Number(e.target.value) } : s))} className="w-full h-2 bg-pink-100 rounded-lg appearance-none cursor-pointer mt-2 accent-pink-400" />
+                        </div>
+                        {subjects.length > 1 && (
+                          <button onClick={() => setSubjects(subjects.filter(s => s.id !== subject.id))} className="p-2 text-pink-200 hover:text-red-400 rounded-lg self-center sm:absolute sm:right-4">
+                            <SVGIcon name="trash" className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button onClick={generatePlan} className="w-full py-4 bg-pink-400 hover:bg-pink-500 text-white rounded-2xl font-bold text-lg flex items-center justify-center gap-2 shadow-lg transition-transform hover:scale-[1.01]">
+                  나만의 플래너 자동 생성하기 <SVGIcon name="right" className="w-6 h-6" />
+                </button>
+              </div>
+            )}
+
+            {/* STEP 2: Result */}
+            {step === 2 && planResult && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="bg-gradient-to-br from-pink-400 to-rose-400 p-6 rounded-2xl text-white shadow-lg">
+                    <div className="text-pink-50 text-sm font-medium mb-1">다음 시험까지 남은 시간</div>
+                    <div className="text-4xl font-extrabold">D - {planResult.dDay === 0 ? 'Day' : planResult.dDay}</div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border border-pink-100 flex flex-col justify-center">
+                    <div className="text-slate-500 text-sm font-medium mb-1 flex items-center gap-1">
+                      <SVGIcon name="clock" className="w-4 h-4 text-pink-300" /> 전체 목표 시간
+                    </div>
+                    <div className="text-3xl font-extrabold text-slate-800">{planResult.totalHours} <span className="text-lg font-medium text-slate-500">시간</span></div>
+                  </div>
+                  <div className="bg-white p-6 rounded-2xl border border-pink-100 flex flex-col justify-center">
+                    <div className="text-slate-500 text-sm font-medium mb-1 flex items-center gap-1">
+                      <SVGIcon name="check" className="w-4 h-4 text-pink-300" /> 하루 권장 공부량
+                    </div>
+                    <div className="text-3xl font-extrabold text-slate-800">{studyHours} <span className="text-lg font-medium text-slate-500">시간</span></div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
+                  <div className="p-6 border-b border-pink-50 bg-rose-50/50">
+                    <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <SVGIcon name="calendar" className="w-5 h-5 text-rose-500" /> 일별 스터디 스케줄러
+                    </h2>
+                    <p className="text-sm text-slate-500 mt-1">달력에서 날짜를 선택하면 해당 날짜의 추천 스터디 루틴을 볼 수 있어요.</p>
+                  </div>
+                  <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-pink-50">
+                    <div className="p-6 md:w-1/2">
+                      <div className="flex justify-between items-center mb-4">
+                        <button onClick={prevMonth} disabled={!canGoPrev} className={`p-2 rounded-full ${canGoPrev ? 'text-pink-500' : 'text-slate-200'}`}><SVGIcon name="left" className="w-5 h-5"/></button>
+                        <span className="font-bold text-slate-700">{currentMonth.getFullYear()}년 {currentMonth.getMonth() + 1}월</span>
+                        <button onClick={nextMonth} disabled={!canGoNext} className={`p-2 rounded-full ${canGoNext ? 'text-pink-500' : 'text-slate-200'}`}><SVGIcon name="right" className="w-5 h-5"/></button>
+                      </div>
+                      <div className="grid grid-cols-7 mb-2 text-center text-xs font-semibold text-slate-400">
+                        {['일', '월', '화', '수', '목', '금', '토'].map(d => <div key={d}>{d}</div>)}
+                      </div>
+                      <div className="grid grid-cols-7 gap-1">
+                        {Array.from({ length: getFirstDayOfMonth(currentMonth.getFullYear(), currentMonth.getMonth()) }).map((_, idx) => <div key={idx} className="h-10"></div>)}
+                        {Array.from({ length: getDaysInMonth(currentMonth.getFullYear(), currentMonth.getMonth()) }).map((_, idx) => {
+                          const dayDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), idx + 1);
+                          const isSelected = isSameDate(selectedDate, dayDate);
+                          const studyDay = isStudyDay(dayDate);
+                          const examDay = isExamDay(dayDate);
+                          const today = isSameDate(new Date(), dayDate);
+
+                          let cls = "h-10 rounded-xl flex items-center justify-center text-sm font-medium relative ";
+                          if (isSelected) cls += "bg-pink-400 text-white shadow-md ";
+                          else if (examDay) cls += "bg-red-100 text-red-600 ";
+                          else if (studyDay) cls += "bg-pink-50 text-pink-700 ";
+                          else cls += "text-slate-600 hover:bg-slate-50";
+
+                          return (
+                            <button key={idx} onClick={() => setSelectedDate(dayDate)} className={cls}>
+                              {idx + 1}
+                              {today && <span className="absolute bottom-1 w-1 h-1 rounded-full bg-blue-500"></span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-4 flex gap-3 text-xs text-slate-500 justify-center">
+                        <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-full bg-blue-500"></div>오늘</div>
+                        <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-md bg-pink-50 border border-pink-100"></div>공부하는 날</div>
+                        <div className="flex items-center gap-1"><div className="w-3 h-3 rounded-md bg-red-100"></div>시험일</div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 md:w-1/2 bg-slate-50/30 flex flex-col justify-between">
+                      <div>
+                        <h3 className="text-md font-bold text-slate-800 mb-4 flex items-center gap-2">
+                          <SVGIcon name="check" className="w-5 h-5 text-rose-500" />
+                          {selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 스터디 루틴
+                        </h3>
+                        {isExamDay(selectedDate) ? (
+                          <div className="text-center py-6">
+                            <SVGIcon name="trophy" className="w-12 h-12 text-yellow-400 mx-auto mb-2" />
+                            <p className="font-bold text-slate-700">대망의 시험일!</p>
+                            <p className="text-slate-500 text-sm">그동안 고생 많았어요! 화이팅!</p>
+                          </div>
+                        ) : isStudyDay(selectedDate) ? (
+                          <div className="space-y-4">
+                            {getDynamicDailyRoutine(selectedDate).map((sub, idx) => (
+                              <div key={idx} className="flex items-center gap-4">
+                                <div className="w-20 font-bold text-slate-700 truncate">{sub.name}</div>
+                                <div className="flex-1 h-5 bg-rose-100 rounded-full overflow-hidden relative">
+                                  <div className="h-full bg-rose-400 rounded-full" style={{ width: `${(sub.dailyMinutes / (studyHours * 60)) * 100}%` }}></div>
+                                </div>
+                                <div className="w-24 text-right font-medium text-rose-600 text-sm">{sub.dailyMinutes > 0 ? formatTime(sub.dailyMinutes) : '완료 (0분)'}</div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 text-slate-400">일정이 없는 날이에요.</div>
+                        )}
+                      </div>
+
+                      {isStudyDay(selectedDate) && (getDaysToExam(selectedDate) === 1 || getDaysToExam(selectedDate) === 2) && (
+                        <div className="mt-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col items-center justify-center text-center animate-in zoom-in-95 duration-200">
+                          <span className="text-xs font-bold text-rose-400 uppercase tracking-widest">EXAM COUNTDOWN</span>
+                          <span className="text-6xl font-black text-rose-500 tracking-tighter my-1">D - {getDaysToExam(selectedDate)}</span>
+                          <span className="text-xs font-medium text-rose-500">시험 전 마지막 스퍼트! 조금만 더 힘내세요! 🎒</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Strategy Table */}
+                <div className="bg-white rounded-2xl shadow-sm border border-pink-100 overflow-hidden">
+                  <div className="p-6 border-b border-pink-50 bg-pink-50/50">
+                    <h2 className="text-lg font-semibold flex items-center gap-2">
+                      <SVGIcon name="book" className="w-5 h-5 text-pink-400" /> 과목별 전체 학습 마스터 플랜
+                    </h2>
+                  </div>
+                  <div className="p-0 overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-pink-50/30 border-b border-pink-100 text-sm text-slate-500">
+                          <th className="p-4 font-medium">과목</th>
+                          <th className="p-4 font-medium">목표 등급</th>
+                          <th className="p-4 font-medium">중요도</th>
+                          <th className="p-4 font-medium">현재 진척도</th>
+                          <th className="p-4 font-medium text-right">남은 기간 할당 시간</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-pink-50">
+                        {planResult.subjects.map((sub, idx) => (
+                          <tr key={idx} className="hover:bg-pink-50/40">
+                            <td className="p-4 font-bold text-slate-800">{sub.name}</td>
+                            <td className="p-4 font-bold text-slate-700">{sub.targetGrade}등급</td>
+                            <td className="p-4">
+                              <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${sub.priority === '상' ? 'bg-red-100 text-red-600' : sub.priority === '중' ? 'bg-orange-100 text-orange-600' : 'bg-green-100 text-green-600'}`}>
+                                {sub.priority}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-24 h-2 bg-pink-100 rounded-full overflow-hidden">
+                                  <div className="h-full bg-pink-400" style={{ width: `${sub.progress}%` }}></div>
+                                </div>
+                                <span className="text-xs text-slate-500">{sub.progress}%</span>
+                              </div>
+                            </td>
+                            <td className="p-4 text-right font-bold text-pink-500">총 {sub.totalHours} 시간</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Save Buttons */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-100 space-y-4">
+                  <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                    <SVGIcon name="save" className="w-5 h-5 text-pink-500" /> 스케줄 및 데이터 안전 보관하기
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onClick={copyStudyPlanText} className="p-3.5 bg-pink-50 hover:bg-pink-100 text-pink-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-pink-100 transition-colors"><SVGIcon name="copy" className="w-4 h-4" /> 카톡용 일별 스케줄 텍스트 복사</button>
+                    <button onClick={copyStudyCode} className="p-3.5 bg-pink-500 hover:bg-pink-600 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors"><SVGIcon name="download" className="w-4 h-4" /> 기기 이동용 단축 백업코드 복사</button>
+                  </div>
+                  <p className="text-xs text-slate-500 text-center">
+                    ✨ 기기 자동 저장 완료: 사파리나 웹을 완전히 껐다 켜도 데이터가 안전하게 저장되어 있습니다.
+                  </p>
+                </div>
+
+                <div className="flex gap-4 pt-2">
+                  <button onClick={() => setStep(1)} className="flex-1 py-4 bg-white border-2 border-pink-200 text-pink-500 rounded-2xl font-bold text-lg flex items-center justify-center gap-2 transition-all"><SVGIcon name="rotate" className="w-5 h-5" /> 조건 다시 설정하기</button>
+                </div>
+
+                {/* Credits */}
+                <div className="text-center pt-12 pb-24 space-y-2">
+                  <p className="text-xs font-semibold text-pink-400/80 tracking-wide">수시대박!!수능대박!!정명인들 화이팅♡</p>
+                  <p className="text-[10px] text-slate-400 tracking-wider">
+                    제작: 3817정다슬 / 오류문의는 <a href="https://www.instagram.com/daxl.2?igsh=MjlzcHQ3M3l4NXpu&utm_source=qr" target="_blank" rel="noopener noreferrer" className="font-bold text-pink-500 hover:text-pink-600 underline">DM</a>
+                  </p>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Toast Message */}
+          {toastMessage && (
+            <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-slate-950/90 text-white px-6 py-4 rounded-2xl shadow-xl flex items-center gap-3 z-50 animate-in slide-in-from-bottom-6 max-w-sm w-11/12 border border-pink-500/20">
+              <SVGIcon name="check" className="w-5 h-5 text-pink-400 flex-shrink-0" />
+              <p className="text-sm font-medium flex-1 text-pink-100">{toastMessage}</p>
+              <button onClick={() => setToastMessage('')} className="text-pink-300 hover:text-white"><SVGIcon name="x" className="w-4 h-4" /></button>
+            </div>
+          )}
+
+          {/* Import Modal */}
+          {showImportModal && (
+            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl border border-pink-50 space-y-4 animate-in zoom-in-95 duration-150">
+                <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <SVGIcon name="upload" className="w-5 h-5 text-pink-500" /> 스터디 백업코드로 복구
+                </h3>
+                <p className="text-xs text-slate-500">이전에 복사해 두었던 단축 백업코드를 붙여넣으면 즉시 데이터를 동기화합니다.</p>
+                <textarea rows="4" value={importCode} onChange={(e) => setImportCode(e.target.value)} placeholder="여기에 단축 코드를 붙여넣어 주세요..." className="w-full p-3 rounded-xl border border-pink-200 text-xs font-mono outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-300" />
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => setShowImportModal(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm transition-colors">닫기</button>
+                  <button onClick={handleImportCode} className="flex-1 py-2.5 bg-pink-500 text-white rounded-xl font-bold text-sm transition-colors shadow-md">불러오기 적용</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    const container = document.getElementById('root');
+    const root = ReactDOM.createRoot(container);
+    root.render(<App />);
+  </script>
+</body>
+</html>
+
