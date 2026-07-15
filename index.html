@@ -8,11 +8,11 @@
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   
-  <!-- 가장 안정적이고 호환성 높은 React 17 버전 스크립트 (아이패드 사파리 크래시 방지) -->
+  <!-- 가장 안정적이고 호환성 높은 React 17 버전 스크립트 -->
   <script src="https://unpkg.com/react@17/umd/react.production.min.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js" crossorigin></script>
   
-  <!-- Babel (JSX 파싱용) -->
+  <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
 </head>
 <body class="bg-[#fff0f5]">
@@ -182,24 +182,49 @@
         return new Date(year, month - 1, day, 0, 0, 0, 0);
       };
 
+      // 기기 데이터 초기화 및 첫 화면으로 강제 이동 비상 함수
+      const clearAndReset = () => {
+        try {
+          localStorage.removeItem('jmy_study_planner_data');
+          setStep(1);
+          setExamStartDate('');
+          setExamEndDate('');
+          setStudyHours(4);
+          setSubjects([
+            { id: 1, name: '국어', priority: '상', progress: 30, targetGrade: 1 },
+            { id: 2, name: '수학', priority: '상', progress: 10, targetGrade: 2 },
+            { id: 3, name: '영어', priority: '중', progress: 50, targetGrade: 3 },
+          ]);
+          setPlanResult(null);
+          showToast('🧹 이전 스터디 데이터가 깔끔하게 초기화되었습니다!');
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
       useEffect(() => {
         try {
           const savedData = localStorage.getItem('jmy_study_planner_data');
           if (savedData) {
             const decodedData = JSON.parse(savedData);
-            if (decodedData) {
-              if (decodedData.examStartDate) setExamStartDate(decodedData.examStartDate);
-              if (decodedData.examEndDate) setExamEndDate(decodedData.examEndDate);
-              if (decodedData.studyHours) setStudyHours(Number(decodedData.studyHours));
-              if (decodedData.subjects) setSubjects(decodedData.subjects);
+            // 저장된 날짜와 과목이 유효한지 안전 검사 실시
+            if (decodedData && decodedData.examStartDate && decodedData.examEndDate && decodedData.subjects && decodedData.subjects.length > 0) {
+              setExamStartDate(decodedData.examStartDate);
+              setExamEndDate(decodedData.examEndDate);
+              setStudyHours(Number(decodedData.studyHours || 4));
+              setSubjects(decodedData.subjects);
               
               setTimeout(() => {
                 triggerPlanGeneration(decodedData);
               }, 150);
+            } else {
+              // 유효하지 않은 데이터는 정리 후 첫 화면 유지
+              localStorage.removeItem('jmy_study_planner_data');
             }
           }
         } catch (e) {
-          console.error(e);
+          console.error("자동 데이터 복구 실패:", e);
+          localStorage.removeItem('jmy_study_planner_data');
         }
       }, []);
 
@@ -222,6 +247,8 @@
         today.setHours(0, 0, 0, 0);
         
         const lastExamDate = actualExamDates[actualExamDates.length - 1];
+        if (!lastExamDate) return;
+
         const upcomingExams = actualExamDates.filter(d => d >= today);
         const nextExamDate = upcomingExams.length > 0 ? upcomingExams[0] : lastExamDate;
         
@@ -536,13 +563,24 @@
               {step === 1 && (
                 <p className="text-slate-500">지정하신 주말과 시간에 맞춘 자동 플래너 시스템</p>
               )}
+              
+              {/* 가져오기 및 비상 리셋 상단 버튼 */}
               {step === 1 && (
-                <button 
-                  onClick={() => setShowImportModal(true)}
-                  className="absolute right-0 top-0 text-sm font-semibold text-pink-600 bg-white border border-pink-100 px-3 py-2 rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-1.5 shadow-sm"
-                >
-                  <SVGIcon name="upload" className="w-4 h-4" /> 코드 불러오기
-                </button>
+                <div className="absolute right-0 top-0 flex gap-2">
+                  <button 
+                    onClick={() => setShowImportModal(true)}
+                    className="text-sm font-semibold text-pink-600 bg-white border border-pink-100 px-3 py-2 rounded-xl hover:bg-pink-50 transition-colors flex items-center gap-1.5 shadow-sm"
+                  >
+                    <SVGIcon name="upload" className="w-4 h-4" /> 코드 불러오기
+                  </button>
+                  <button 
+                    onClick={clearAndReset}
+                    title="초기화"
+                    className="text-sm font-semibold text-slate-500 bg-white border border-slate-100 px-3 py-2 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-sm"
+                  >
+                    <SVGIcon name="rotate" className="w-4 h-4" /> 초기화
+                  </button>
+                </div>
               )}
             </div>
 
@@ -789,7 +827,7 @@
                   </div>
                 </div>
 
-                {/* Save Buttons */}
+                {/* Save/Copy Buttons */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-pink-100 space-y-4">
                   <h3 className="font-bold text-slate-800 flex items-center gap-2">
                     <SVGIcon name="save" className="w-5 h-5 text-pink-500" /> 스케줄 및 데이터 안전 보관하기
@@ -835,7 +873,7 @@
                 <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                   <SVGIcon name="upload" className="w-5 h-5 text-pink-500" /> 스터디 백업코드로 복구
                 </h3>
-                <p className="text-xs text-slate-500">이전에 복사해 두었던 단축 백업코드를 붙여넣으면 즉시 데이터를 동기화합니다.</p>
+                <p className="text-xs text-slate-500">이전에 복사해 두었던 단축 백업코드를 아래 칸에 붙여넣으면 즉시 데이터를 동기화합니다.</p>
                 <textarea rows="4" value={importCode} onChange={(e) => setImportCode(e.target.value)} placeholder="여기에 단축 코드를 붙여넣어 주세요..." className="w-full p-3 rounded-xl border border-pink-200 text-xs font-mono outline-none focus:border-pink-400 focus:ring-1 focus:ring-pink-300" />
                 <div className="flex gap-2 pt-2">
                   <button onClick={() => setShowImportModal(false)} className="flex-1 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm transition-colors">닫기</button>
